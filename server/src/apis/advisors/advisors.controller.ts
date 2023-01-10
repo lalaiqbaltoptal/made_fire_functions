@@ -13,8 +13,8 @@ export class AdvisorsController {
     return await this.advisorService.getAdvisorsOptions();
   }
 
-  @Put()
-  async getAdvisors(@Body() pref: AdvisorPrefDto): Promise<ResponseModel> {
-    return await this.advisorService.getAdvisorsList(pref);
-  }
+  // @Put()
+  // async getAdvisors(@Body() pref: AdvisorPrefDto): Promise<ResponseModel> {
+  //   return await this.advisorService.getAdvisorsList(pref);
+  // }
 }

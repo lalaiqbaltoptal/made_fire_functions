@@ -11,4 +11,9 @@ export class CoachingController {
   async actionHabits(@Param('userId') userId: string): Promise<ResponseModel> {
     return await this.coachingService.getActionAndHabits(userId);
   }
+
+  // @Get('coachings/:userId')
+  // async getCoachings(@Param('userId') userId: string): Promise<ResponseModel> {
+  //   return await this.coachingService.
+  // }
 }

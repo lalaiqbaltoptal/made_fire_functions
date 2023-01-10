@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { FireCollection } from 'src/constants/fireCollection';
 import { LevelType } from 'src/constants/level.types';
+import { DeepCopyDto } from 'src/dtos/deep-copy.dto';
 import { EndNodesModel } from 'src/models/end_node.model';
 import { LevelModel } from 'src/models/level.model';
 import { PredecessorLevelModel } from 'src/models/predecessor_level.model';
@@ -19,6 +25,9 @@ export class SetupService {
     levelNo: number,
   ): PredecessorLevelModel[] {
     const predecessor: SetupModel = setupHashMap[predecessorId];
+    if (predecessor == undefined) {
+      return [];
+    }
     predecessorList.push({
       id: predecessor.id,
       levelName: predecessor.levelName,
@@ -63,20 +72,24 @@ export class SetupService {
         endNodes.push(Object.assign(item));
       }
     });
+    const finalEndNodes: EndNodesModel[] = [];
     endNodes.forEach((item) => {
-      item.predeLevels = [];
-      item.predeLevels = this.seqPredecessors(
+      const predeLevels = this.seqPredecessors(
         hashMap,
         [],
         item.predecessorId,
         maxLevel - 1,
       ).reverse();
+      if (predeLevels.length > 0) {
+        item.predeLevels = predeLevels;
+        finalEndNodes.push(item);
+      }
     });
     return {
       message: 'End node loaded successfully',
       success: true,
-      data: endNodes,
-      count: endNodes.length,
+      data: finalEndNodes,
+      count: finalEndNodes.length,
     };
   }
   async predecessorList(id: string): Promise<ResponseModel> {
@@ -147,23 +160,21 @@ export class SetupService {
       },
     };
   }
-  async deepCopy(id: string): Promise<ResponseModel> {
-    const levels: LevelModel[] = await (
-      await this.fireService.getAll(FireCollection.level)
-    ).docs.map((item) =>
-      Object.assign({ id: item.id }, item.data() as LevelModel),
-    );
+  async deepCopy(deepCopyDto: DeepCopyDto): Promise<ResponseModel> {
+    const id = deepCopyDto.docId;
+    const newPNo = deepCopyDto.newPNo;
     const hashMap = {};
     const predecessorHashMap = {};
     let payrentSetup: SetupModel;
     const setups: SetupModel[] = await (
       await this.fireService.getAll(FireCollection.setup)
-    ).docs.map((item) => {
+    ).docs.map((item, index) => {
       const obj = Object.assign({ id: item.id }, item.data() as SetupModel);
       obj.nextNodes = [];
       hashMap[item.id] = obj;
       if (id == item.id) {
         payrentSetup = obj;
+        payrentSetup.priority = newPNo;
       }
       if (predecessorHashMap[obj.predecessorId] == undefined) {
         predecessorHashMap[obj.predecessorId] = [];
@@ -171,6 +182,7 @@ export class SetupService {
       predecessorHashMap[obj.predecessorId].push(obj);
       return obj;
     });
+
     if (!payrentSetup) {
       throw new BadRequestException('Invalid id');
     }
@@ -179,8 +191,9 @@ export class SetupService {
       Object.assign(predecessorHashMap),
       payrentSetup,
     );
-
-    await this.saveCopy(mapedPayrent);
+    const newSetupList = [];
+    this.saveCopy(mapedPayrent, newSetupList);
+    await this.fireService.batchWrite(FireCollection.setup, newSetupList);
     return {
       count: undefined,
       message: 'Deep copy id done',
@@ -238,16 +251,13 @@ export class SetupService {
       await this.deleteHelper(node);
     }
   }
-  private async saveCopy(setupModel: SetupModel) {
-    const copyToSave: SetupModel = Object.assign(setupModel);
+  private saveCopy(setupModel: SetupModel, newSetupList: SetupModel[]) {
+    const copyToSave: SetupModel = JSON.parse(JSON.stringify(setupModel));
     copyToSave.id = MadeUtils.id;
-
+    copyToSave.nextNodes = undefined;
     copyToSave.title = copyToSave.title + ' - copy';
-    await this.fireService.postData(
-      FireCollection.setup,
-      copyToSave,
-      copyToSave.id,
-    );
+
+    newSetupList.push(JSON.parse(JSON.stringify(copyToSave)));
 
     if (setupModel.nextNodes == undefined) {
       setupModel.nextNodes = [];
@@ -255,7 +265,7 @@ export class SetupService {
     for (let i = 0; i < setupModel.nextNodes.length; i++) {
       const node: SetupModel = setupModel.nextNodes[i];
       node.predecessorId = copyToSave.id;
-      await this.saveCopy(node);
+      this.saveCopy(node, newSetupList);
     }
   }
   private mapChildren(

@@ -19,6 +19,6 @@ export class MadeUtils {
         isContain = true;
       }
     });
-    return true;
+    return isContain;
   }
 }

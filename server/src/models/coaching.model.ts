@@ -12,6 +12,8 @@ export class CoachingModel {
   userId: string;
   endNodeId: string;
   activePlan: string;
+  userPersonalizeId: string;
   cpQuestions: string[];
+  isActive: boolean;
   advisorPreference: UserPreferenceModel;
 }

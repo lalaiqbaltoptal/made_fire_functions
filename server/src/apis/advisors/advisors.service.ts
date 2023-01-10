@@ -4,6 +4,7 @@ import { AdvisorPrefDto } from 'src/dtos/advisor_pref_body';
 import { AdvisorCategory } from 'src/models/advisor-category.model';
 import { Advisor } from 'src/models/advisors.model';
 import { AdvisorsOptionModel } from 'src/models/advisors_options';
+import { UserPreferenceModel } from 'src/models/coaching.model';
 import { ResponseModel } from 'src/models/response.model';
 import { FireAdminService } from 'src/services/fire-admin.service';
 
@@ -66,27 +67,55 @@ export class AdvisorsService {
       data: advisorsOptions,
     };
   }
+  isThisFromPref(
+    userPref: UserPreferenceModel,
+    advisorCategory: AdvisorCategory,
+  ): boolean {
+    let isThis = true;
+    if (userPref.gender != null) {
+      if (userPref.gender != advisorCategory.gender) {
+        isThis = false;
+      }
+    }
+    if (userPref.ethnicity != null) {
+      if (userPref.ethnicity != advisorCategory.ethnicity) {
+        isThis = false;
+      }
+    }
+    if (userPref.type != null) {
+      if (userPref.type != advisorCategory.type) {
+        isThis = false;
+      }
+    }
+    if (userPref.maxAge != null) {
+      if (userPref.maxAge != advisorCategory.ageUpper) {
+        isThis = false;
+      }
+    }
 
-  async getAdvisorsList(pref: AdvisorPrefDto): Promise<ResponseModel> {
-    // const advisorCategory: AdvisorCategory[] = await (
-    //   await this.fireService
-    //     .getQuery(FireCollection.advisor_category)
-    //     .where('gender', '==', pref.gender)
-    //     .where('ethnicity', '==', pref.ethnicity)
-    //     .where('type', '==', pref.type)
-    //     .get()
-    // ).docs
-    //   .map((item) =>
-    //     Object.assign({ id: item.id }, item.data() as AdvisorCategory),
-    //   )
-    //   .filter(
-    //     (item) =>
-    //       item.ageLower >= pref.ageLower && item.ageUpper <= pref.ageUpper,
-    //   );
+    if (userPref.minAge != null) {
+      if (userPref.minAge != advisorCategory.ageLower) {
+        isThis = false;
+      }
+    }
+
+    return isThis;
+  }
+  async getAdvisorsList(pref: UserPreferenceModel): Promise<ResponseModel> {
+    const advisorCategory: AdvisorCategory[] = await (
+      await this.fireService.getAll(FireCollection.advisor_category)
+    ).docs.map((item) =>
+      Object.assign({ id: item.id }, item.data() as AdvisorCategory),
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const ids: string[] = advisorCategory
+      .filter((item) => this.isThisFromPref(pref, item))
+      .map((e) => e.id);
 
     const advisors: Advisor[] = await (
       await this.fireService
         .getQuery(FireCollection.advisors)
+        .where('categoryId', 'in', ids)
 
         .get()
     ).docs.map((item) =>

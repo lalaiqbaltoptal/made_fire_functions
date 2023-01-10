@@ -1,5 +1,6 @@
-import { Controller, Delete, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { DeepCopyDto } from 'src/dtos/deep-copy.dto';
 import { ResponseModel } from 'src/models/response.model';
 import { SetupService } from './setup.service';
 @ApiTags('setup')
@@ -21,8 +22,8 @@ export class SetupController {
     return await this.setupService.deepDeleteSetup(id);
   }
 
-  @Put('copy/:id')
-  async createDeepCopy(@Param('id') id: string): Promise<ResponseModel> {
-    return await this.setupService.deepCopy(id);
+  @Put('copy')
+  async createDeepCopy(@Body() copyDto: DeepCopyDto): Promise<ResponseModel> {
+    return await this.setupService.deepCopy(copyDto);
   }
 }

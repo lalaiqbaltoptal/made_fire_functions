@@ -8,4 +8,7 @@ export class FireCollection {
   public static coaching = 'coaching';
   public static actions = 'actions';
   public static habits = 'habits';
+  public static stripe_user = 'stripe_user';
+  public static stripe_session = 'stripe_session';
+  public static stripe_transaction = 'stripe_transaction';
 }

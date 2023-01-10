@@ -10,6 +10,9 @@ export const createNestServer = async (expressInstance) => {
   const nestFunctions = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressInstance),
+    {
+      rawBody: true,
+    },
   );
   nestFunctions.enableCors();
   return nestFunctions.init();

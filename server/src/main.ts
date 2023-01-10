@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 import { swaggerConfig } from './config/swagger-config';
 
 async function bootstrap() {
-  const nestFunctions = await NestFactory.create(AppModule);
+  const nestFunctions = await NestFactory.create(AppModule, { rawBody: true });
   SwaggerModule.setup(
     'api',
     nestFunctions,
